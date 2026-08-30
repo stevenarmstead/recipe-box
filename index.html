@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Recipe Box</title>
+<style>
+  :root{
+    --bg: #14161C;
+    --bg-alt: #101217;
+    --surface: #1C1F27;
+    --surface-2: #242832;
+    --border: #343A47;
+    --ink: #ECEEF2;
+    --ink-muted: #A6ADBA;
+    --ink-faint: #6E7684;
+    --accent: #5AA9E6;
+    --accent-dim: #3D6E93;
+    --accent-2: #9C8FD6;
+    --rust: #ECEEF2;
+    --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    --radius: 3px;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { min-height: 100%; padding-bottom: 80px; }
+
+  /* subtle grain / warmth via layered radial */
+  #app {
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -5%, rgba(227,162,60,0.06), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(138,163,123,0.05), transparent 60%);
+  }
+
+  a { color: inherit; }
+  button { font-family: inherit; cursor:pointer; }
+
+  /* HEADER */
+  header.top {
+    padding: 36px 28px 18px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 40px;
+    margin: 0 0 6px;
+    letter-spacing: 0.01em;
+  }
+  .subtitle { color: var(--ink-muted); font-size: 14.5px; margin: 0 0 22px; max-width: 560px; line-height:1.5;}
+
+  .controls-row {
+    display:flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1 1 260px;
+    min-width: 220px;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    padding: 11px 14px 11px 36px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: var(--font-body);
+  }
+  .search-wrap input::placeholder { color: var(--ink-faint); }
+  .search-wrap input:focus { outline: none; border-color: var(--accent-dim); }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 13px; color: var(--ink-faint); pointer-events:none;
+  }
+
+  .unit-toggle {
+    display:flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow:hidden;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    flex-shrink:0;
+  }
+  .unit-toggle button {
+    background: var(--surface);
+    color: var(--ink-muted);
+    border: none;
+    padding: 10px 14px;
+    letter-spacing: 0.04em;
+  }
+  .unit-toggle button.active { background: var(--accent); color: #0D1016; font-weight:700; }
+
+  .btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn:hover { border-color: var(--accent-dim); }
+  .btn.primary { background: var(--accent); color: #0D1016; border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover { background: #f0b355; }
+  .btn.danger { border-style: dashed; }
+  .btn.ghost { background: transparent; }
+
+  /* CATEGORY TABS */
+  .tabs-wrap { max-width: 980px; margin: 22px auto 0; padding: 0 28px; }
+  .tabs-scroll {
+    display:flex;
+    gap: 2px;
+    overflow-x: auto;
+    padding-bottom: 0;
+    scrollbar-width: none;
+  }
+  .tabs-scroll::-webkit-scrollbar{ display:none; }
+  .cat-tab {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    padding: 9px 18px 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    color: var(--ink-muted);
+    clip-path: polygon(8% 0, 92% 0, 100% 100%, 0% 100%);
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-right: -6px;
+    transition: color .15s;
+  }
+  .cat-tab:hover { color: var(--ink); }
+  .cat-tab.active { background: var(--bg-alt); color: var(--accent); border-color: var(--accent-dim); }
+  .tabs-divider { border-bottom: 1px solid var(--border); margin-top: -1px; }
+
+  /* GRID */
+  main.grid-view { max-width: 980px; margin: 0 auto; padding: 26px 28px; }
+  .recipe-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 18px;
+  }
+  .rcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    position: relative;
+    cursor: pointer;
+    transition: transform .12s, border-color .12s;
+  }
+  .rcard:hover { transform: translateY(-2px); border-color: var(--accent-dim); }
+  .rcard::after {
+    content: "";
+    position: absolute; left: 18px; right: 18px; bottom: 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .rcard h3 {
+    font-family: var(--font-display);
+    font-size: 19px;
+    margin: 0 0 8px;
+    line-height: 1.25;
+    padding-right: 6px;
+  }
+  .rcard .meta-line {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-bottom: 12px;
+  }
+  .tag-row { display:flex; flex-wrap:wrap; gap:6px; margin-top: 14px; }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    padding: 3px 8px;
+    background: var(--surface-2);
+    color: var(--accent-2);
+    border-radius: 2px;
+  }
+  .note-flag { position:absolute; top:14px; right:14px; font-size: 13px; color: var(--accent); opacity:.85; }
+  .empty-state {
+    text-align:center; padding: 70px 20px; color: var(--ink-muted);
+  }
+  .empty-state h3 { font-family: var(--font-display); font-size: 22px; color: var(--ink); margin-bottom: 8px;}
+
+  /* DETAIL VIEW */
+  main.detail-view { max-width: 860px; margin: 0 auto; padding: 8px 28px 40px; }
+  .back-link {
+    display:inline-flex; align-items:center; gap:6px;
+    color: var(--ink-muted); font-size: 13px; text-decoration:none;
+    margin-bottom: 18px; background:none; border:none; padding:6px 0;
+  }
+  .back-link:hover { color: var(--accent); }
+  .detail-head {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 26px;
+    display:flex; justify-content:space-between; align-items:flex-start; gap: 16px; flex-wrap:wrap;
+  }
+  .detail-head h2 { font-family: var(--font-display); font-size: 34px; margin: 0 0 10px; }
+  .detail-actions { display:flex; gap:8px; flex-shrink:0; }
+  .detail-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+  .detail-meta a { color: var(--accent); }
+
+  .detail-body { display:grid; grid-template-columns: 280px 1fr; gap: 40px; }
+  @media (max-width: 680px){ .detail-body{ grid-template-columns: 1fr; } }
+
+  .section-label {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 14px;
+  }
+  ul.ingredient-list { list-style:none; margin:0; padding:0; }
+  ul.ingredient-list li {
+    display:flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border);
+    font-size: 14px; align-items: baseline;
+  }
+  ul.ingredient-list .amt {
+    font-family: var(--font-mono); color: var(--accent); min-width: 74px; flex-shrink:0; text-align:right;
+  }
+  ul.ingredient-list .iname { flex:1; }
+  ul.ingredient-list .find-btn {
+    background:none; border:none; color: var(--ink-faint); font-size: 12px; padding: 0 2px;
+  }
+  ul.ingredient-list .find-btn:hover { color: var(--accent-2); }
+
+  ol.steps { list-style:none; margin:0; padding:0; counter-reset: step; }
+  ol.steps li {
+    display:flex; gap: 16px; padding: 0 0 22px; counter-increment: step;
+    font-size: 15px; line-height: 1.6;
+  }
+  ol.steps li::before {
+    content: counter(step);
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--bg);
+    background: var(--accent);
+    width: 26px; height: 26px; border-radius: 50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; font-weight:700;
+  }
+
+  .notes-box {
+    margin-top: 30px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .notes-box p { margin:0; font-size: 14px; color: var(--ink-muted); line-height:1.6; white-space:pre-wrap; }
+  .notes-box textarea {
+    width:100%; background:var(--bg-alt); border:1px solid var(--border); color:var(--ink);
+    padding:10px; font-family: var(--font-body); font-size: 14px; border-radius: var(--radius); min-height: 80px;
+  }
+
+  /* FORM / MODAL */
+  .overlay {
+    position: fixed; inset:0; background: rgba(10,8,5,0.72);
+    display:flex; align-items:flex-start; justify-content:center;
+    padding: 40px 16px; overflow-y:auto; z-index: 50;
+  }
+  .modal {
+    background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius);
+    max-width: 640px; width:100%; padding: 28px 26px 26px;
+  }
+  .modal h3 { font-family: var(--font-display); font-size: 24px; margin: 0 0 4px; }
+  .modal .modal-sub { color: var(--ink-muted); font-size: 13px; margin: 0 0 22px; line-height:1.5; }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display:block; font-family: var(--font-mono); font-size: 11px; text-transform:uppercase;
+    letter-spacing: 0.08em; color: var(--ink-faint); margin-bottom: 6px;
+  }
+  .field input, .field textarea, .field select {
+    width:100%; background: var(--surface); border:1px solid var(--border); color:var(--ink);
+    padding: 9px 11px; border-radius: var(--radius); font-family: var(--font-body); font-size: 13.5px;
+  }
+  .field textarea { min-height: 90px; resize: vertical; font-family: var(--font-mono); line-height:1.5;}
+  .field-row { display:flex; gap: 10px; }
+  .ing-row { display:flex; gap:8px; margin-bottom: 8px; align-items:center; }
+  .ing-row input.amt-in { width: 70px; }
+  .ing-row select { width: 90px; flex-shrink:0; }
+  .ing-row input.name-in { flex:1; }
+  .ing-row .rm { background:none; border:none; color: var(--ink-faint); font-size:16px; flex-shrink:0; padding: 4px 6px;}
+  .ing-row .rm:hover { color: var(--rust); }
+  .add-row-btn {
+    background:none; border: 1px dashed var(--border); color: var(--ink-muted);
+    padding: 8px; border-radius: var(--radius); font-size: 12.5px; width:100%; margin-top:2px;
+  }
+  .add-row-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top: 22px; }
+  .hint { font-size: 11.5px; color: var(--ink-faint); margin-top:4px; }
+  code.tag-code { font-family: var(--font-mono); background: var(--surface); padding:1px 5px; border-radius:2px; font-size: 11px;}
+
+  /* FAB */
+  .fab-group { position: fixed; bottom: 26px; right: 26px; display:flex; gap:10px; z-index: 30; }
+  .fab {
+    background: var(--accent); color: #0D1016; border:none; font-weight:700; font-size: 13.5px;
+    padding: 13px 20px; border-radius: 30px; box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+  .fab.secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--border); }
+
+  .toast {
+    position: fixed; bottom: 90px; left:50%; transform: translateX(-50%);
+    background: var(--surface-2); border:1px solid var(--border); color: var(--ink);
+    padding: 10px 18px; border-radius: var(--radius); font-size: 13px; z-index: 60;
+    opacity:0; pointer-events:none; transition: opacity .25s;
+  }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- UNIT CONVERSION ---------- */
+const UNIT_META = {
+  '':      {type:'count'},
+  'tsp':   {type:'volume', toMl: 4.92892, label:'tsp'},
+  'tbsp':  {type:'volume', toMl: 14.7868, label:'tbsp'},
+  'fl oz': {type:'volume', toMl: 29.5735, label:'fl oz'},
+  'cup':   {type:'volume', toMl: 236.588, label:'cup'},
+  'pint':  {type:'volume', toMl: 473.176, label:'pt'},
+  'quart': {type:'volume', toMl: 946.353, label:'qt'},
+  'gallon':{type:'volume', toMl: 3785.41, label:'gal'},
+  'ml':    {type:'volume', toMl: 1, label:'ml'},
+  'l':     {type:'volume', toMl: 1000, label:'l'},
+  'g':     {type:'weight', toG: 1, label:'g'},
+  'kg':    {type:'weight', toG: 1000, label:'kg'},
+  'oz':    {type:'weight', toG: 28.3495, label:'oz'},
+  'lb':    {type:'weight', toG: 453.592, label:'lb'},
+};
+const UNIT_OPTIONS = ['', 'tsp','tbsp','fl oz','cup','pint','quart','gallon','ml','l','g','kg','oz','lb'];
+
+// Approximate grams-per-cup for common dry/solid ingredients that are conventionally
+// weighed (not measured by volume) in metric recipes. Liquids (oil, milk, honey, stock…)
+// are intentionally left out — those stay in ml/l in both systems, which matches real usage.
+const DENSITY_TABLE = [
+  {match:'brown sugar', gPerCup:220},
+  {match:'powdered sugar', gPerCup:120},
+  {match:'icing sugar', gPerCup:120},
+  {match:'sugar', gPerCup:200},
+  {match:'parmesan', gPerCup:100},
+  {match:'cheddar', gPerCup:113},
+  {match:'mozzarella', gPerCup:113},
+  {match:'cheese', gPerCup:113},
+  {match:'flour', gPerCup:120},
+  {match:'butter', gPerCup:227},
+  {match:'oats', gPerCup:90},
+  {match:'rice', gPerCup:185},
+  {match:'red pepper flakes', gPerCup:90},
+  {match:'pepper flakes', gPerCup:90},
+  {match:'black pepper', gPerCup:100},
+  {match:'salt', gPerCup:292},
+  {match:'baking powder', gPerCup:192},
+  {match:'baking soda', gPerCup:220},
+  {match:'cinnamon', gPerCup:124},
+  {match:'cocoa', gPerCup:86},
+  {match:'cornstarch', gPerCup:128},
+  {match:'breadcrumbs', gPerCup:108},
+  {match:'nuts', gPerCup:120},
+  {match:'chocolate chips', gPerCup:170},
+];
+function findDensity(name){
+  const n = (name||'').toLowerCase();
+  const hit = DENSITY_TABLE.find(d => n.includes(d.match));
+  return hit ? hit.gPerCup : null;
+}
+
+const FRACTIONS = [
+  [0,''],[1/8,'⅛'],[1/4,'¼'],[1/3,'⅓'],[3/8,'⅜'],[1/2,'½'],
+  [5/8,'⅝'],[2/3,'⅔'],[3/4,'¾'],[7/8,'⅞'],[1,'']
+];
+function fmtFraction(n){
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  let best = FRACTIONS[0], bestDist = 1;
+  for (const f of FRACTIONS){
+    const d = Math.abs(frac - f[0]);
+    if (d < bestDist){ bestDist = d; best = f; }
+  }
+  let w = whole, sym = best[1];
+  if (best[0] === 1){ w += 1; sym=''; }
+  if (w === 0 && sym==='') return '0';
+  if (w === 0) return sym;
+  if (sym === '') return String(w);
+  return w + ' ' + sym;
+}
+function round2(n){ return Math.round(n*100)/100; }
+
+function volumeFromMl(ml, system){
+  if (system === 'metric'){
+    if (ml >= 1000) return {amount: round2(ml/1000), unit:'l'};
+    return {amount: Math.round(ml), unit:'ml'};
+  } else {
+    const cups = ml/236.588;
+    if (cups >= 0.2) return {amount: fmtFraction(cups), unit: cups>=1.05?'cups':'cup'};
+    const tbsp = ml/14.7868;
+    if (tbsp >= 0.85) return {amount: fmtFraction(tbsp), unit: tbsp>=1.05?'tbsp':'tbsp'};
+    const tsp = ml/4.92892;
+    return {amount: fmtFraction(tsp), unit: 'tsp'};
+  }
+}
+function weightFromG(g, system){
+  if (system === 'metric'){
+    if (g >= 1000) return {amount: round2(g/1000), unit:'kg'};
+    return {amount: Math.round(g), unit:'g'};
+  } else {
+    const oz = g/28.3495;
+    if (oz >= 16) return {amount: round2(oz/16), unit:'lb'};
+    return {amount: round2(oz), unit:'oz'};
+  }
+}
+function convertIngredient(ing, system){
+  const meta = UNIT_META[ing.unit] || UNIT_META[''];
+  if (meta.type === 'count' || !ing.amount){
+    return {amount: ing.amount, unit: ing.unit};
+  }
+  if (meta.type === 'volume'){
+    const ml = Number(ing.amount) * meta.toMl;
+    if (system === 'metric'){
+      const density = findDensity(ing.name);
+      if (density){
+        const g = (ml/236.588) * density;
+        const w = weightFromG(g, 'metric');
+        return {amount: '~' + w.amount, unit: w.unit};
+      }
+    }
+    return volumeFromMl(ml, system);
+  }
+  if (meta.type === 'weight'){
+    const g = Number(ing.amount) * meta.toG;
+    return weightFromG(g, system);
+  }
+  return {amount: ing.amount, unit: ing.unit};
+}
+
+function round3(n){ return Math.round(n*1000)/1000; }
+
+const UNIT_WORD_MAP = {
+  'tsp':'tsp','teaspoon':'tsp','teaspoons':'tsp',
+  'tbsp':'tbsp','tablespoon':'tbsp','tablespoons':'tbsp',
+  'cup':'cup','cups':'cup',
+  'oz':'oz','ounce':'oz','ounces':'oz',
+  'lb':'lb','lbs':'lb','pound':'lb','pounds':'lb',
+  'g':'g','gram':'g','grams':'g',
+  'kg':'kg','kilogram':'kg','kilograms':'kg',
+  'ml':'ml','milliliter':'ml','milliliters':'ml',
+  'l':'l','liter':'l','liters':'l','litre':'l','litres':'l',
+  'pint':'pint','pints':'pint','pt':'pint',
+  'quart':'quart','quarts':'quart','qt':'quart',
+  'gallon':'gallon','gallons':'gallon','gal':'gallon',
+  'fl oz':'fl oz','fluid ounce':'fl oz','fluid ounces':'fl oz'
+};
+const FRAC = {'¼':0.25,'½':0.5,'¾':0.75,'⅓':1/3,'⅔':2/3,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875};
+
+function cleanInstructionLine(line){
+  return line.replace(/^(\d+[\.\)]\s*|step\s*\d+[:\.]?\s*|[-•*]\s*)/i, '').trim();
+}
+
+function parseIngredientLine(rawLine){
+  let rest = rawLine.replace(/^[-•*]\s*/, '').trim();
+  if (!rest) return null;
+  let amount = '';
+  let m = rest.match(/^(\d+)\s*([¼½¾⅓⅔⅛⅜⅝⅞])\s*/);
+  if (m){ amount = round3(Number(m[1]) + FRAC[m[2]]); rest = rest.slice(m[0].length); }
+  else {
+    m = rest.match(/^([¼½¾⅓⅔⅛⅜⅝⅞])\s*/);
+    if (m){ amount = FRAC[m[1]]; rest = rest.slice(m[0].length); }
+    else {
+      m = rest.match(/^(\d+)\s+(\d+)\/(\d+)\s*/);
+      if (m){ amount = round3(Number(m[1]) + Number(m[2])/Number(m[3])); rest = rest.slice(m[0].length); }
+      else {
+        m = rest.match(/^(\d+)\/(\d+)\s*/);
+        if (m){ amount = round3(Number(m[1])/Number(m[2])); rest = rest.slice(m[0].length); }
+        else {
+          m = rest.match(/^(\d+(\.\d+)?)\s*/);
+          if (m){ amount = Number(m[1]); rest = rest.slice(m[0].length); }
+        }
+      }
+    }
+  }
+  rest = rest.trim();
+  let unit = '';
+  const words = rest.split(/\s+/);
+  const twoWord = words.slice(0,2).join(' ').toLowerCase().replace(/[.,]/g,'');
+  const oneWord = (words[0]||'').toLowerCase().replace(/[.,]/g,'');
+  if (UNIT_WORD_MAP[twoWord]){ unit = UNIT_WORD_MAP[twoWord]; rest = words.slice(2).join(' '); }
+  else if (UNIT_WORD_MAP[oneWord]){ unit = UNIT_WORD_MAP[oneWord]; rest = words.slice(1).join(' '); }
+  rest = rest.replace(/^of\s+/i,'').trim();
+  if (!rest) return null;
+  return { amount, unit, name: rest };
+}
+
+function parsePlainRecipeText(text){
+  const lines = text.split('\n').map(l=>l.trim());
+  const headerRegexes = {
+    ingredients: /^ingredients?\s*:?$/i,
+    instructions: /^(instructions?|directions?|method|steps)\s*:?$/i,
+    notes: /^notes?\s*:?$/i
+  };
+  let sections = {ingredients:[], instructions:[], notes:[]};
+  let current = null;
+  let preHeaderLines = [];
+  for (const line of lines){
+    if (!line) continue;
+    if (headerRegexes.ingredients.test(line)){ current='ingredients'; continue; }
+    if (headerRegexes.instructions.test(line)){ current='instructions'; continue; }
+    if (headerRegexes.notes.test(line)){ current='notes'; continue; }
+    if (current) sections[current].push(line);
+    else preHeaderLines.push(line);
+  }
+  let title = preHeaderLines.length ? preHeaderLines[0] : '';
+
+  if (!sections.ingredients.length && !sections.instructions.length){
+    for (const line of lines){
+      if (!line || line === title) continue;
+      if (/^[\d¼½¾⅓⅔⅛⅜⅝⅞]/.test(line) && line.length < 80) sections.ingredients.push(line);
+      else if (line.length > 25) sections.instructions.push(line);
+    }
+  }
+
+  const ingredients = sections.ingredients.map(parseIngredientLine).filter(Boolean);
+  const instructions = sections.instructions.map(cleanInstructionLine).filter(Boolean);
+  const notes = sections.notes.join(' ');
+  return { title, ingredients, instructions, notes, servings:'', categories:[] };
+}
+
+/* ---------- STATE ---------- */
+let recipes = [];
+let system = 'imperial';
+let view = 'grid'; // grid | detail | form
+let activeCategory = 'All';
+let searchQuery = '';
+let editingId = null;
+let ingredientFilter = null; // when set via "used in" click
+
+const SEED = [
+  {
+    id: 'r1', title: 'Weeknight Lemon Garlic Pasta', sourceUrl: '', servings: '4',
+    categories: ['Dinner','Pasta','Vegetarian'],
+    ingredients: [
+      {amount:12, unit:'oz', name:'spaghetti'},
+      {amount:4, unit:'tbsp', name:'olive oil'},
+      {amount:4, unit:'', name:'garlic cloves, thinly sliced'},
+      {amount:1, unit:'', name:'lemon, zested and juiced'},
+      {amount:0.5, unit:'cup', name:'parmesan, grated'},
+      {amount:0.25, unit:'tsp', name:'red pepper flakes'},
+      {amount:1, unit:'tsp', name:'salt'},
+    ],
+    instructions: [
+      'Bring a large pot of salted water to a boil and cook spaghetti until al dente. Reserve 1 cup pasta water before draining.',
+      'While pasta cooks, warm olive oil in a skillet over medium-low heat. Add garlic and red pepper flakes, stirring until fragrant, about 2 minutes.',
+      'Add drained pasta to the skillet along with lemon zest, juice, and a splash of reserved pasta water. Toss to coat.',
+      'Remove from heat, stir in parmesan, and toss until glossy. Add more pasta water if needed. Season with salt and serve immediately.'
+    ],
+    notes: 'Great with grilled shrimp on top. Don\'t skip reserving the pasta water — it\'s what makes the sauce cling.'
+  },
+  {
+    id: 'r2', title: 'Morning Oat & Honey Muffins', sourceUrl: '', servings: '12 muffins',
+    categories: ['Breakfast','Baking'],
+    ingredients: [
+      {amount:1.5, unit:'cup', name:'rolled oats'},
+      {amount:1.25, unit:'cup', name:'flour'},
+      {amount:0.33, unit:'cup', name:'honey'},
+      {amount:2, unit:'', name:'large eggs'},
+      {amount:0.5, unit:'cup', name:'milk'},
+      {amount:0.33, unit:'cup', name:'butter, melted'},
+      {amount:2, unit:'tsp', name:'baking powder'},
+      {amount:0.5, unit:'tsp', name:'cinnamon'},
+      {amount:0.5, unit:'tsp', name:'salt'},
+    ],
+    instructions: [
+      'Preheat oven to 375°F (190°C) and line a muffin tin with liners.',
+      'Whisk together oats, flour, baking powder, cinnamon, and salt in a large bowl.',
+      'In a separate bowl, whisk eggs, honey, milk, and melted butter until smooth.',
+      'Fold wet ingredients into dry until just combined — do not overmix.',
+      'Divide batter among muffin cups and bake 18–20 minutes, until a toothpick comes out clean.'
+    ],
+    notes: ''
+  }
+];
+
+/* ---------- STORAGE (plain browser localStorage — works outside Claude) ---------- */
+const STORAGE_KEY = 'recipe-box-data';
+async function loadRecipes(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    recipes = raw ? JSON.parse(raw) : null;
+  } catch(e){ recipes = null; }
+  if (!recipes){
+    recipes = SEED;
+    await persist();
+  }
+  render();
+}
+async function persist(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes)); }
+  catch(e){ showToast('Could not save — your browser may be blocking local storage'); }
+}
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(recipes, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'recipe-box-backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importBackup(file){
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('not an array');
+      recipes = data;
+      await persist();
+      showToast('Backup restored');
+      view = 'grid'; editingId = null;
+      render();
+    } catch(err){
+      showToast('That file doesn\'t look like a valid backup');
+    }
+  };
+  reader.readAsText(file);
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+/* ---------- HELPERS ---------- */
+function allCategories(){
+  const set = new Set();
+  recipes.forEach(r => (r.categories||[]).forEach(c => set.add(c)));
+  return ['All', ...Array.from(set).sort()];
+}
+function filteredRecipes(){
+  let list = recipes;
+  if (activeCategory !== 'All'){
+    list = list.filter(r => (r.categories||[]).includes(activeCategory));
+  }
+  if (ingredientFilter){
+    list = list.filter(r => (r.ingredients||[]).some(i => i.name.toLowerCase().includes(ingredientFilter.toLowerCase())));
+  }
+  if (searchQuery.trim()){
+    const q = searchQuery.trim().toLowerCase();
+    list = list.filter(r =>
+      r.title.toLowerCase().includes(q) ||
+      (r.ingredients||[]).some(i => i.name.toLowerCase().includes(q)) ||
+      (r.categories||[]).some(c => c.toLowerCase().includes(q))
+    );
+  }
+  return list;
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function findRecipe(id){ return recipes.find(r => r.id === id); }
+
+/* ---------- RENDER: ROOT ---------- */
+function render(){
+  const app = document.getElementById('app');
+  if (view === 'detail'){
+    app.innerHTML = renderDetail(findRecipe(editingId));
+  } else {
+    app.innerHTML = renderGridPage();
+  }
+  bindGlobalEvents();
+}
+
+function renderHeader(){
+  return `
+  <header class="top">
+    <p class="eyebrow">The Recipe Box</p>
+    <h1 class="title">${ingredientFilter ? 'Recipes with "' + esc(ingredientFilter) + '"' : 'Your Collection'}</h1>
+    <p class="subtitle">${ingredientFilter ? 'Clear the filter below to browse everything.' : 'Search by dish or ingredient, browse by category, or bring in a new recipe from a link.'}</p>
+    <div class="controls-row">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input id="search-input" type="text" placeholder="Search recipes or ingredients…" value="${esc(searchQuery)}">
+      </div>
+      <div class="unit-toggle">
+        <button data-sys="metric" class="${system==='metric'?'active':''}">METRIC</button>
+        <button data-sys="imperial" class="${system==='imperial'?'active':''}">IMPERIAL</button>
+      </div>
+      <button class="btn primary" id="new-btn">+ Add Recipe</button>
+      <button class="btn ghost" id="export-btn" title="Download all recipes as a file">⬇ Export</button>
+      <button class="btn ghost" id="import-backup-btn" title="Restore from a backup file">⬆ Import backup</button>
+      <input type="file" id="import-backup-file" accept="application/json" style="display:none;">
+    </div>
+    ${ingredientFilter ? `<button class="btn ghost" id="clear-ing-filter" style="margin-top:12px;">✕ Clear "${esc(ingredientFilter)}" filter</button>` : ''}
+  </header>`;
+}
+
+function renderTabs(){
+  const cats = allCategories();
+  return `
+  <div class="tabs-wrap">
+    <div class="tabs-scroll">
+      ${cats.map(c => `<div class="cat-tab ${c===activeCategory?'active':''}" data-cat="${esc(c)}">${esc(c)}</div>`).join('')}
+    </div>
+    <div class="tabs-divider"></div>
+  </div>`;
+}
+
+function renderGridPage(){
+  const list = filteredRecipes();
+  return `
+    ${renderHeader()}
+    ${renderTabs()}
+    <main class="grid-view">
+      ${list.length ? `<div class="recipe-grid">${list.map(renderCard).join('')}</div>` : renderEmpty()}
+    </main>
+    ${renderFabs()}
+  `;
+}
+
+function renderCard(r){
+  const n = (r.ingredients||[]).length;
+  return `
+  <div class="rcard" data-open="${r.id}">
+    ${r.notes ? '<span class="note-flag" title="Has notes">✎</span>' : ''}
+    <h3>${esc(r.title)}</h3>
+    <div class="meta-line">${n} INGREDIENT${n===1?'':'S'}${r.servings ? ' · ' + esc(r.servings) : ''}</div>
+    <div class="tag-row">${(r.categories||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join('')}</div>
+  </div>`;
+}
+
+function renderEmpty(){
+  return `<div class="empty-state">
+    <h3>Nothing here yet</h3>
+    <p>Add a recipe by hand, or paste a link to me in chat and I'll pull it in for you.</p>
+  </div>`;
+}
+
+function renderFabs(){
+  return `
+  <div class="fab-group">
+    <button class="fab" id="new-btn-2">+ Add Recipe</button>
+  </div>`;
+}
+
+/* ---------- RENDER: DETAIL ---------- */
+function renderDetail(r){
+  if (!r) return renderGridPage();
+  return `
+  <main class="detail-view">
+    <button class="back-link" id="back-btn">← Back to collection</button>
+    <div class="detail-head">
+      <div>
+        <h2>${esc(r.title)}</h2>
+        <div class="detail-meta">
+          ${r.servings ? 'SERVES ' + esc(r.servings) : ''}
+          ${r.sourceUrl ? ' &nbsp;·&nbsp; <a href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Original source ↗</a>' : ''}
+        </div>
+        <div class="tag-row" style="margin-top:12px;">${(r.categories||[]).map(c=>`<span class="tag" style="cursor:pointer" data-cat-jump="${esc(c)}">${esc(c)}</span>`).join('')}</div>
+      </div>
+      <div class="detail-actions">
+        <div class="unit-toggle">
+          <button data-sys="metric" class="${system==='metric'?'active':''}">METRIC</button>
+          <button data-sys="imperial" class="${system==='imperial'?'active':''}">IMPERIAL</button>
+        </div>
+        <button class="btn" id="edit-btn">✎ Edit</button>
+        <button class="btn danger" id="delete-btn">🗑 Delete</button>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div>
+        <p class="section-label">Ingredients</p>
+        ${system==='metric' ? '<p class="hint" style="margin-bottom:10px;">~ marks a weight estimated from a volume measurement</p>' : ''}
+        <ul class="ingredient-list">
+          ${(r.ingredients||[]).map(i => {
+            const conv = convertIngredient(i, system);
+            const amtLabel = conv.amount === '' || conv.amount == null ? '' : conv.amount;
+            const unitLabel = UNIT_META[conv.unit] ? (UNIT_META[conv.unit].label||conv.unit) : conv.unit;
+            return `<li>
+              <span class="amt">${esc(amtLabel)}${unitLabel ? ' '+esc(unitLabel) : ''}</span>
+              <span class="iname">${esc(i.name)}</span>
+              <button class="find-btn" title="Find recipes with this ingredient" data-find="${esc(i.name)}">⌕</button>
+            </li>`;
+          }).join('')}
+        </ul>
+      </div>
+      <div>
+        <p class="section-label">Instructions</p>
+        <ol class="steps">
+          ${(r.instructions||[]).map(step => `<li>${esc(step)}</li>`).join('')}
+        </ol>
+        <div class="notes-box">
+          <p class="section-label" style="margin-bottom:8px;">Notes</p>
+          ${r.notes ? `<p>${esc(r.notes)}</p>` : `<p style="color:var(--ink-faint);">No notes yet — add tips or tweaks when you edit this recipe.</p>`}
+        </div>
+      </div>
+    </div>
+  </main>`;
+}
+
+/* ---------- RENDER: FORM MODAL ---------- */
+function renderForm(recipe){
+  const r = recipe || {title:'', sourceUrl:'', servings:'', categories:[], ingredients:[{amount:'',unit:'',name:''}], instructions:[''], notes:''};
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'form-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>${recipe ? 'Edit Recipe' : 'Add Recipe'}</h3>
+      <p class="modal-sub">Fill in what you have — you can always come back and edit.</p>
+      ${recipe ? '' : `
+      <div class="field" style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px;">
+        <label style="margin-bottom:8px;">Got a link? Paste ingredients/instructions, or data from Claude</label>
+        <textarea id="paste-extract" style="min-height:70px; font-family:var(--font-mono); font-size:12px;" placeholder='Paste the recipe text straight off a page (Ingredients / Instructions works best), or a data block from Claude.'></textarea>
+        <p class="hint">Missing or messy pieces are fine — it fills in what it can find, and everything below stays editable. Plain text parsing is a best guess, so double-check amounts and units after.</p>
+        <button type="button" class="add-row-btn" id="fill-from-paste" style="margin-top:8px;">Fill in the form below</button>
+      </div>
+      `}
+      <div class="field"><label>Title</label><input id="f-title" value="${esc(r.title)}" placeholder="Weeknight Lemon Garlic Pasta"></div>
+      <div class="field-row">
+        <div class="field" style="flex:1;"><label>Servings</label><input id="f-servings" value="${esc(r.servings)}" placeholder="4"></div>
+        <div class="field" style="flex:2;"><label>Source URL (optional)</label><input id="f-source" value="${esc(r.sourceUrl)}" placeholder="https://…"></div>
+      </div>
+      <div class="field">
+        <label>Categories (comma-separated)</label>
+        <input id="f-categories" value="${esc((r.categories||[]).join(', '))}" placeholder="Dinner, Pasta, Vegetarian">
+      </div>
+      <div class="field">
+        <label>Ingredients</label>
+        <div id="ing-rows"></div>
+        <button type="button" class="add-row-btn" id="add-ing">+ Add ingredient</button>
+      </div>
+      <div class="field">
+        <label>Instructions (one step per line)</label>
+        <textarea id="f-instructions" placeholder="Bring water to a boil…&#10;Add pasta and cook 9 minutes…">${esc((r.instructions||[]).join('\n'))}</textarea>
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="f-notes" style="font-family:var(--font-body);" placeholder="Tips, substitutions, things you'd change next time…">${esc(r.notes)}</textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancel-form">Cancel</button>
+        <button class="btn primary" id="save-form">${recipe ? 'Save Changes' : 'Add Recipe'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const ingRows = overlay.querySelector('#ing-rows');
+  function addIngRow(ing){
+    const row = document.createElement('div');
+    row.className = 'ing-row';
+    row.innerHTML = `
+      <input class="amt-in" type="text" placeholder="1" value="${esc(ing?.amount ?? '')}">
+      <select class="unit-sel">${UNIT_OPTIONS.map(u=>`<option value="${u}" ${ing&&ing.unit===u?'selected':''}>${u===''?'(none)':u}</option>`).join('')}</select>
+      <input class="name-in" type="text" placeholder="ingredient name" value="${esc(ing?.name ?? '')}">
+      <button type="button" class="rm">✕</button>
+    `;
+    row.querySelector('.rm').onclick = () => row.remove();
+    ingRows.appendChild(row);
+  }
+  (r.ingredients && r.ingredients.length ? r.ingredients : [{amount:'',unit:'',name:''}]).forEach(addIngRow);
+  overlay.querySelector('#add-ing').onclick = () => addIngRow(null);
+
+  const fillBtn = overlay.querySelector('#fill-from-paste');
+  if (fillBtn){
+    fillBtn.onclick = () => {
+      const raw = overlay.querySelector('#paste-extract').value.trim();
+      if (!raw){ showToast('Paste something in first'); return; }
+      let data;
+      let usedPlainText = false;
+      try {
+        data = JSON.parse(raw);
+      } catch(e){
+        data = parsePlainRecipeText(raw);
+        usedPlainText = true;
+      }
+      if (data.title) overlay.querySelector('#f-title').value = data.title;
+      if (data.servings) overlay.querySelector('#f-servings').value = data.servings;
+      if (data.sourceUrl) overlay.querySelector('#f-source').value = data.sourceUrl;
+      if (Array.isArray(data.categories) && data.categories.length) overlay.querySelector('#f-categories').value = data.categories.join(', ');
+      if (Array.isArray(data.instructions) && data.instructions.length) overlay.querySelector('#f-instructions').value = data.instructions.join('\n');
+      if (data.notes) overlay.querySelector('#f-notes').value = data.notes;
+      if (Array.isArray(data.ingredients) && data.ingredients.length){
+        ingRows.innerHTML = '';
+        data.ingredients.forEach(i => addIngRow({amount: i.amount ?? '', unit: i.unit || '', name: i.name || ''}));
+      }
+      showToast(usedPlainText ? 'Form filled from plain text — double-check amounts and units' : 'Form filled — review and adjust anything that\'s off');
+    };
+  }
+
+  overlay.querySelector('#cancel-form').onclick = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  overlay.querySelector('#save-form').onclick = async () => {
+    const title = overlay.querySelector('#f-title').value.trim();
+    if (!title){ showToast('Give the recipe a title first'); return; }
+    const ingredients = Array.from(ingRows.querySelectorAll('.ing-row')).map(row => ({
+      amount: row.querySelector('.amt-in').value.trim() === '' ? '' : Number(row.querySelector('.amt-in').value.trim()) || row.querySelector('.amt-in').value.trim(),
+      unit: row.querySelector('.unit-sel').value,
+      name: row.querySelector('.name-in').value.trim()
+    })).filter(i => i.name);
+    const instructions = overlay.querySelector('#f-instructions').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const categories = overlay.querySelector('#f-categories').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const newRecipe = {
+      id: recipe ? recipe.id : 'r' + Date.now(),
+      title,
+      sourceUrl: overlay.querySelector('#f-source').value.trim(),
+      servings: overlay.querySelector('#f-servings').value.trim(),
+      categories, ingredients, instructions,
+      notes: overlay.querySelector('#f-notes').value.trim()
+    };
+    if (recipe){
+      const idx = recipes.findIndex(x=>x.id===recipe.id);
+      recipes[idx] = newRecipe;
+    } else {
+      recipes.push(newRecipe);
+    }
+    await persist();
+    overlay.remove();
+    editingId = newRecipe.id;
+    view = 'detail';
+    showToast(recipe ? 'Recipe updated' : 'Recipe added');
+    render();
+  };
+}
+
+/* ---------- EVENTS ---------- */
+function bindGlobalEvents(){
+  const searchInput = document.getElementById('search-input');
+  if (searchInput){
+    searchInput.oninput = (e) => { searchQuery = e.target.value; renderList(); };
+  }
+  document.querySelectorAll('[data-sys]').forEach(btn => {
+    btn.onclick = () => { system = btn.dataset.sys; render(); };
+  });
+  document.querySelectorAll('.cat-tab').forEach(el => {
+    el.onclick = () => { activeCategory = el.dataset.cat; ingredientFilter = null; render(); };
+  });
+  document.querySelectorAll('[data-cat-jump]').forEach(el => {
+    el.onclick = () => { activeCategory = el.dataset.catJump; ingredientFilter = null; view='grid'; render(); };
+  });
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.onclick = () => { editingId = el.dataset.open; view = 'detail'; render(); };
+  });
+  const backBtn = document.getElementById('back-btn');
+  if (backBtn) backBtn.onclick = () => { view = 'grid'; editingId = null; render(); };
+
+  const editBtn = document.getElementById('edit-btn');
+  if (editBtn) editBtn.onclick = () => renderForm(findRecipe(editingId));
+
+  const deleteBtn = document.getElementById('delete-btn');
+  if (deleteBtn) deleteBtn.onclick = async () => {
+    if (!confirm('Delete this recipe? This can\'t be undone.')) return;
+    recipes = recipes.filter(r => r.id !== editingId);
+    await persist();
+    view = 'grid'; editingId = null;
+    showToast('Recipe deleted');
+    render();
+  };
+
+  ['new-btn','new-btn-2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onclick = () => renderForm(null);
+  });
+  const exportBtn = document.getElementById('export-btn');
+  if (exportBtn) exportBtn.onclick = exportBackup;
+  const importBackupBtn = document.getElementById('import-backup-btn');
+  const importBackupFile = document.getElementById('import-backup-file');
+  if (importBackupBtn && importBackupFile){
+    importBackupBtn.onclick = () => importBackupFile.click();
+    importBackupFile.onchange = (e) => {
+      if (e.target.files[0]) importBackup(e.target.files[0]);
+      e.target.value = '';
+    };
+  }
+
+  document.querySelectorAll('[data-find]').forEach(el => {
+    el.onclick = () => {
+      ingredientFilter = el.dataset.find;
+      activeCategory = 'All';
+      view = 'grid'; editingId = null;
+      render();
+    };
+  });
+  const clearFilter = document.getElementById('clear-ing-filter');
+  if (clearFilter) clearFilter.onclick = () => { ingredientFilter = null; render(); };
+}
+
+function renderList(){
+  // partial re-render of just the grid, to keep focus in the search box
+  const main = document.querySelector('main.grid-view');
+  if (!main) return;
+  const list = filteredRecipes();
+  main.innerHTML = list.length ? `<div class="recipe-grid">${list.map(renderCard).join('')}</div>` : renderEmpty();
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.onclick = () => { editingId = el.dataset.open; view = 'detail'; render(); };
+  });
+}
+
+loadRecipes();
+</script>
+</body>
+</html>
