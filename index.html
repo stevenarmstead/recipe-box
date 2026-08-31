@@ -320,6 +320,21 @@
   }
   .fab.secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--border); }
 
+  .backup-banner {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--accent-dim);
+    padding: 12px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--ink-muted);
+    text-align: center;
+  }
+  .backup-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
   .toast {
     position: fixed; bottom: 90px; left:50%; transform: translateX(-50%);
     background: var(--surface-2); border:1px solid var(--border); color: var(--ink);
@@ -555,6 +570,10 @@ let activeCategory = 'All';
 let searchQuery = '';
 let editingId = null;
 let ingredientFilter = null; // when set via "used in" click
+let bannerDismissedThisVisit = false;
+const BACKUP_REMINDER_DAYS = 14;
+const LAST_EXPORT_KEY = 'recipe-box-last-export';
+const FIRST_SEEN_KEY = 'recipe-box-first-seen';
 
 const SEED = [
   {
@@ -627,6 +646,25 @@ function exportBackup(){
   a.download = 'recipe-box-backup.json';
   a.click();
   URL.revokeObjectURL(url);
+  localStorage.setItem(LAST_EXPORT_KEY, String(Date.now()));
+  bannerDismissedThisVisit = false;
+  showToast('Backup downloaded');
+  render();
+}
+function daysSince(ts){ return (Date.now() - ts) / (1000*60*60*24); }
+function isBackupDue(){
+  let lastExport = localStorage.getItem(LAST_EXPORT_KEY);
+  if (!lastExport){
+    // never exported — start the clock from first time this browser opened the app,
+    // so brand-new users aren't nagged on day one
+    let firstSeen = localStorage.getItem(FIRST_SEEN_KEY);
+    if (!firstSeen){
+      firstSeen = String(Date.now());
+      localStorage.setItem(FIRST_SEEN_KEY, firstSeen);
+    }
+    lastExport = firstSeen;
+  }
+  return daysSince(Number(lastExport)) >= BACKUP_REMINDER_DAYS;
 }
 function importBackup(file){
   const reader = new FileReader();
@@ -685,12 +723,26 @@ function findRecipe(id){ return recipes.find(r => r.id === id); }
 /* ---------- RENDER: ROOT ---------- */
 function render(){
   const app = document.getElementById('app');
+  let html = '';
   if (view === 'detail'){
-    app.innerHTML = renderDetail(findRecipe(editingId));
+    html = renderDetail(findRecipe(editingId));
   } else {
-    app.innerHTML = renderGridPage();
+    html = renderGridPage();
   }
+  app.innerHTML = renderBackupBanner() + html;
   bindGlobalEvents();
+}
+
+function renderBackupBanner(){
+  if (bannerDismissedThisVisit || !isBackupDue()) return '';
+  return `
+  <div class="backup-banner" id="backup-banner">
+    <span>It's been ${BACKUP_REMINDER_DAYS}+ days since your last backup — your recipes only live in this browser.</span>
+    <div class="backup-banner-actions">
+      <button class="btn primary" id="banner-export-btn" style="padding:7px 14px;">Export now</button>
+      <button class="btn ghost" id="banner-dismiss-btn" style="padding:7px 10px;">Dismiss</button>
+    </div>
+  </div>`;
 }
 
 function renderHeader(){
@@ -949,6 +1001,11 @@ function renderForm(recipe){
 
 /* ---------- EVENTS ---------- */
 function bindGlobalEvents(){
+  const bannerExportBtn = document.getElementById('banner-export-btn');
+  if (bannerExportBtn) bannerExportBtn.onclick = exportBackup;
+  const bannerDismissBtn = document.getElementById('banner-dismiss-btn');
+  if (bannerDismissBtn) bannerDismissBtn.onclick = () => { bannerDismissedThisVisit = true; render(); };
+
   const searchInput = document.getElementById('search-input');
   if (searchInput){
     searchInput.oninput = (e) => { searchQuery = e.target.value; renderList(); };
