@@ -235,6 +235,11 @@
     text-transform: uppercase; color: var(--accent); margin: 0 0 14px;
   }
   ul.ingredient-list { list-style:none; margin:0; padding:0; }
+  ul.ingredient-list li.ing-group-header {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent-2); border-bottom: none; padding: 16px 0 6px; font-weight: 700;
+  }
+  ul.ingredient-list li.ing-group-header:first-child { padding-top: 0; }
   ul.ingredient-list li {
     display:flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border);
     font-size: 14px; align-items: baseline;
@@ -263,6 +268,12 @@
     display:flex; align-items:center; justify-content:center;
     flex-shrink:0; font-weight:700;
   }
+
+  .step-group-header {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent-2); font-weight: 700; margin: 4px 0 12px;
+  }
+  .steps-block:first-of-type .step-group-header { margin-top: 0; }
 
   .notes-box {
     margin-top: 30px; background: var(--surface); border: 1px solid var(--border);
@@ -303,6 +314,11 @@
   .ing-row input.name-in { flex:1; }
   .ing-row .rm { background:none; border:none; color: var(--ink-faint); font-size:16px; flex-shrink:0; padding: 4px 6px;}
   .ing-row .rm:hover { color: var(--rust); }
+  .ing-row.group-row { margin-top: 14px; margin-bottom: 10px; }
+  .ing-row.group-row .group-in {
+    flex:1; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent-2); background: var(--surface-2); border: 1px dashed var(--accent-dim);
+  }
   .add-row-btn {
     background:none; border: 1px dashed var(--border); color: var(--ink-muted);
     padding: 8px; border-radius: var(--radius); font-size: 12.5px; width:100%; margin-top:2px;
@@ -720,6 +736,48 @@ function esc(s){
 }
 function findRecipe(id){ return recipes.find(r => r.id === id); }
 
+function renderIngredientsGrouped(ingredients, system){
+  let html = '';
+  let lastGroup = '\u0000';
+  (ingredients||[]).forEach(i => {
+    const g = (i.group||'').trim();
+    if (g && g !== lastGroup){
+      html += `<li class="ing-group-header">${esc(g)}</li>`;
+    }
+    lastGroup = g;
+    const conv = convertIngredient(i, system);
+    const amtLabel = conv.amount === '' || conv.amount == null ? '' : conv.amount;
+    const unitLabel = UNIT_META[conv.unit] ? (UNIT_META[conv.unit].label||conv.unit) : conv.unit;
+    html += `<li>
+      <span class="amt">${esc(amtLabel)}${unitLabel ? ' '+esc(unitLabel) : ''}</span>
+      <span class="iname">${esc(i.name)}</span>
+      <button class="find-btn" title="Find recipes with this ingredient" data-find="${esc(i.name)}">⌕</button>
+    </li>`;
+  });
+  return html;
+}
+
+function renderInstructionsGrouped(instructions){
+  const blocks = [];
+  let current = { header: null, steps: [] };
+  (instructions||[]).forEach(step => {
+    const trimmed = (step||'').trim();
+    if (trimmed.startsWith('## ')){
+      if (current.steps.length || current.header) blocks.push(current);
+      current = { header: trimmed.slice(3), steps: [] };
+    } else {
+      current.steps.push(trimmed);
+    }
+  });
+  if (current.steps.length || current.header) blocks.push(current);
+
+  return blocks.map(b => `
+    <div class="steps-block">
+      ${b.header ? `<p class="step-group-header">${esc(b.header)}</p>` : ''}
+      <ol class="steps">${b.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
+    </div>`).join('');
+}
+
 /* ---------- RENDER: ROOT ---------- */
 function render(){
   const app = document.getElementById('app');
@@ -846,23 +904,12 @@ function renderDetail(r){
         <p class="section-label">Ingredients</p>
         ${system==='metric' ? '<p class="hint" style="margin-bottom:10px;">~ marks a weight estimated from a volume measurement</p>' : ''}
         <ul class="ingredient-list">
-          ${(r.ingredients||[]).map(i => {
-            const conv = convertIngredient(i, system);
-            const amtLabel = conv.amount === '' || conv.amount == null ? '' : conv.amount;
-            const unitLabel = UNIT_META[conv.unit] ? (UNIT_META[conv.unit].label||conv.unit) : conv.unit;
-            return `<li>
-              <span class="amt">${esc(amtLabel)}${unitLabel ? ' '+esc(unitLabel) : ''}</span>
-              <span class="iname">${esc(i.name)}</span>
-              <button class="find-btn" title="Find recipes with this ingredient" data-find="${esc(i.name)}">⌕</button>
-            </li>`;
-          }).join('')}
+          ${renderIngredientsGrouped(r.ingredients, system)}
         </ul>
       </div>
       <div>
         <p class="section-label">Instructions</p>
-        <ol class="steps">
-          ${(r.instructions||[]).map(step => `<li>${esc(step)}</li>`).join('')}
-        </ol>
+        ${renderInstructionsGrouped(r.instructions)}
         <div class="notes-box">
           <p class="section-label" style="margin-bottom:8px;">Notes</p>
           ${r.notes ? `<p>${esc(r.notes)}</p>` : `<p style="color:var(--ink-faint);">No notes yet — add tips or tweaks when you edit this recipe.</p>`}
@@ -902,11 +949,15 @@ function renderForm(recipe){
       <div class="field">
         <label>Ingredients</label>
         <div id="ing-rows"></div>
-        <button type="button" class="add-row-btn" id="add-ing">+ Add ingredient</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="add-row-btn" id="add-ing" style="flex:1;">+ Add ingredient</button>
+          <button type="button" class="add-row-btn" id="add-group" style="flex:1;">+ Add section (e.g. "Marinade")</button>
+        </div>
       </div>
       <div class="field">
         <label>Instructions (one step per line)</label>
         <textarea id="f-instructions" placeholder="Bring water to a boil…&#10;Add pasta and cook 9 minutes…">${esc((r.instructions||[]).join('\n'))}</textarea>
+        <p class="hint">For multi-part recipes, start a line with <code class="tag-code">## </code> to create a section, e.g. <code class="tag-code">## Make the sauce</code> — steps below it are numbered separately.</p>
       </div>
       <div class="field">
         <label>Notes</label>
@@ -933,8 +984,29 @@ function renderForm(recipe){
     row.querySelector('.rm').onclick = () => row.remove();
     ingRows.appendChild(row);
   }
-  (r.ingredients && r.ingredients.length ? r.ingredients : [{amount:'',unit:'',name:''}]).forEach(addIngRow);
+  function addGroupRow(name){
+    const row = document.createElement('div');
+    row.className = 'ing-row group-row';
+    row.innerHTML = `
+      <input class="group-in" type="text" placeholder="Section name, e.g. Marinade" value="${esc(name || '')}">
+      <button type="button" class="rm">✕</button>
+    `;
+    row.querySelector('.rm').onclick = () => row.remove();
+    ingRows.appendChild(row);
+  }
+  if (r.ingredients && r.ingredients.length){
+    let lastGroup = '';
+    r.ingredients.forEach(ing => {
+      const g = (ing.group||'').trim();
+      if (g && g !== lastGroup) addGroupRow(g);
+      lastGroup = g;
+      addIngRow(ing);
+    });
+  } else {
+    addIngRow(null);
+  }
   overlay.querySelector('#add-ing').onclick = () => addIngRow(null);
+  overlay.querySelector('#add-group').onclick = () => addGroupRow(null);
 
   const fillBtn = overlay.querySelector('#fill-from-paste');
   if (fillBtn){
@@ -957,7 +1029,13 @@ function renderForm(recipe){
       if (data.notes) overlay.querySelector('#f-notes').value = data.notes;
       if (Array.isArray(data.ingredients) && data.ingredients.length){
         ingRows.innerHTML = '';
-        data.ingredients.forEach(i => addIngRow({amount: i.amount ?? '', unit: i.unit || '', name: i.name || ''}));
+        let lastGroup = '';
+        data.ingredients.forEach(i => {
+          const g = (i.group||'').trim();
+          if (g && g !== lastGroup) addGroupRow(g);
+          lastGroup = g;
+          addIngRow({amount: i.amount ?? '', unit: i.unit || '', name: i.name || ''});
+        });
       }
       showToast(usedPlainText ? 'Form filled from plain text — double-check amounts and units' : 'Form filled — review and adjust anything that\'s off');
     };
@@ -969,11 +1047,23 @@ function renderForm(recipe){
   overlay.querySelector('#save-form').onclick = async () => {
     const title = overlay.querySelector('#f-title').value.trim();
     if (!title){ showToast('Give the recipe a title first'); return; }
-    const ingredients = Array.from(ingRows.querySelectorAll('.ing-row')).map(row => ({
-      amount: row.querySelector('.amt-in').value.trim() === '' ? '' : Number(row.querySelector('.amt-in').value.trim()) || row.querySelector('.amt-in').value.trim(),
-      unit: row.querySelector('.unit-sel').value,
-      name: row.querySelector('.name-in').value.trim()
-    })).filter(i => i.name);
+    const ingredients = [];
+    let currentGroup = '';
+    Array.from(ingRows.children).forEach(row => {
+      if (row.classList.contains('group-row')){
+        currentGroup = row.querySelector('.group-in').value.trim();
+        return;
+      }
+      const name = row.querySelector('.name-in').value.trim();
+      if (!name) return;
+      const amtRaw = row.querySelector('.amt-in').value.trim();
+      ingredients.push({
+        amount: amtRaw === '' ? '' : (Number(amtRaw) || amtRaw),
+        unit: row.querySelector('.unit-sel').value,
+        name,
+        group: currentGroup
+      });
+    });
     const instructions = overlay.querySelector('#f-instructions').value.split('\n').map(s=>s.trim()).filter(Boolean);
     const categories = overlay.querySelector('#f-categories').value.split(',').map(s=>s.trim()).filter(Boolean);
     const newRecipe = {
