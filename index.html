@@ -929,14 +929,12 @@ function renderForm(recipe){
     <div class="modal">
       <h3>${recipe ? 'Edit Recipe' : 'Add Recipe'}</h3>
       <p class="modal-sub">Fill in what you have — you can always come back and edit.</p>
-      ${recipe ? '' : `
       <div class="field" style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px;">
         <label style="margin-bottom:8px;">Got a link? Paste ingredients/instructions, or data from Claude</label>
         <textarea id="paste-extract" style="min-height:70px; font-family:var(--font-mono); font-size:12px;" placeholder='Paste the recipe text straight off a page (Ingredients / Instructions works best), or a data block from Claude.'></textarea>
-        <p class="hint">Missing or messy pieces are fine — it fills in what it can find, and everything below stays editable. Plain text parsing is a best guess, so double-check amounts and units after.</p>
+        <p class="hint">${recipe ? 'This will overwrite the fields below with whatever it finds — use it to re-format this recipe with proper sections.' : "Missing or messy pieces are fine — it fills in what it can find, and everything below stays editable."} Plain text parsing is a best guess, so double-check amounts and units after.</p>
         <button type="button" class="add-row-btn" id="fill-from-paste" style="margin-top:8px;">Fill in the form below</button>
       </div>
-      `}
       <div class="field"><label>Title</label><input id="f-title" value="${esc(r.title)}" placeholder="Weeknight Lemon Garlic Pasta"></div>
       <div class="field-row">
         <div class="field" style="flex:1;"><label>Servings</label><input id="f-servings" value="${esc(r.servings)}" placeholder="4"></div>
