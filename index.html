@@ -403,6 +403,7 @@ const DENSITY_TABLE = [
   {match:'red pepper flakes', gPerCup:90},
   {match:'pepper flakes', gPerCup:90},
   {match:'black pepper', gPerCup:100},
+  {match:'ground pepper', gPerCup:100},
   {match:'salt', gPerCup:292},
   {match:'baking powder', gPerCup:192},
   {match:'baking soda', gPerCup:220},
@@ -440,6 +441,11 @@ const DENSITY_TABLE = [
   {match:'dried rosemary', gPerCup:50},
   {match:'dried parsley', gPerCup:35},
   {match:'dried dill', gPerCup:60},
+  // Ground herb powders — finer and denser than crumbled dried leaves, so kept separate
+  {match:'ground thyme', gPerCup:90},
+  {match:'ground oregano', gPerCup:90},
+  {match:'ground rosemary', gPerCup:90},
+  {match:'ground basil', gPerCup:90},
 ];
 function findDensity(name){
   const n = (name||'').toLowerCase();
