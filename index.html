@@ -412,9 +412,57 @@ const DENSITY_TABLE = [
   {match:'breadcrumbs', gPerCup:108},
   {match:'nuts', gPerCup:120},
   {match:'chocolate chips', gPerCup:170},
+  // Ground/dried spices — these are unambiguous (almost always sold and measured dry)
+  {match:'cumin', gPerCup:88},
+  {match:'turmeric', gPerCup:133},
+  {match:'ground cloves', gPerCup:100},
+  {match:'cloves', gPerCup:100},
+  {match:'mustard seed', gPerCup:176},
+  {match:'celery seed', gPerCup:140},
+  {match:'coriander', gPerCup:80},
+  {match:'fennel seed', gPerCup:130},
+  {match:'chili powder', gPerCup:100},
+  {match:'curry powder', gPerCup:100},
+  {match:'cayenne', gPerCup:100},
+  {match:'garlic powder', gPerCup:133},
+  {match:'onion powder', gPerCup:135},
+  {match:'allspice', gPerCup:112},
+  {match:'nutmeg', gPerCup:113},
+  {match:'ground ginger', gPerCup:90},
+  {match:'paprika', gPerCup:100},
+  {match:'italian seasoning', gPerCup:60},
+  {match:'yeast', gPerCup:144},
+  // Dried herbs — matched only when explicitly "dried", since the same herb fresh
+  // (measured by the cup/tbsp as whole leaves) has a very different, much lower density
+  {match:'dried oregano', gPerCup:65},
+  {match:'dried thyme', gPerCup:40},
+  {match:'dried basil', gPerCup:45},
+  {match:'dried rosemary', gPerCup:50},
+  {match:'dried parsley', gPerCup:35},
+  {match:'dried dill', gPerCup:60},
 ];
 function findDensity(name){
   const n = (name||'').toLowerCase();
+
+  // Spices that are sometimes sold/measured as whole seeds/pods and sometimes ground —
+  // a whole seed and its ground powder don't weigh the same per cup, so guessing the
+  // wrong form is worse than not converting at all.
+  const groundOverrides = [
+    {match:'ground mustard', gPerCup:100},
+    {match:'ground celery', gPerCup:150},
+    {match:'ground fennel', gPerCup:100},
+  ];
+  for (const o of groundOverrides){ if (n.includes(o.match)) return o.gPerCup; }
+
+  const ambiguousWholeOrGround = ['cumin','coriander','clove','allspice','nutmeg','pepper'];
+  const wholeFormIndicator = /\b(seed|seeds|whole|peppercorn|peppercorns|berries|berry|pod|pods)\b/;
+  const mentionsAmbiguous = ambiguousWholeOrGround.some(s => n.includes(s));
+  if (mentionsAmbiguous && wholeFormIndicator.test(n)){
+    // e.g. "cumin seeds", "whole cloves", "black peppercorns" — form is whole, not ground;
+    // no reliable whole-form density on hand, so leave it in volume rather than guess.
+    return null;
+  }
+
   const hit = DENSITY_TABLE.find(d => n.includes(d.match));
   return hit ? hit.gPerCup : null;
 }
