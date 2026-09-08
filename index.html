@@ -450,24 +450,14 @@ const DENSITY_TABLE = [
 function findDensity(name){
   const n = (name||'').toLowerCase();
 
-  // Spices that are sometimes sold/measured as whole seeds/pods and sometimes ground —
-  // a whole seed and its ground powder don't weigh the same per cup, so guessing the
-  // wrong form is worse than not converting at all.
+  // Mustard/celery/fennel seed are named for their whole form by default, and their
+  // ground/powder form is noticeably lighter — worth a distinct, lower estimate.
   const groundOverrides = [
     {match:'ground mustard', gPerCup:100},
     {match:'ground celery', gPerCup:150},
     {match:'ground fennel', gPerCup:100},
   ];
   for (const o of groundOverrides){ if (n.includes(o.match)) return o.gPerCup; }
-
-  const ambiguousWholeOrGround = ['cumin','coriander','clove','allspice','nutmeg','pepper'];
-  const wholeFormIndicator = /\b(seed|seeds|whole|peppercorn|peppercorns|berries|berry|pod|pods)\b/;
-  const mentionsAmbiguous = ambiguousWholeOrGround.some(s => n.includes(s));
-  if (mentionsAmbiguous && wholeFormIndicator.test(n)){
-    // e.g. "cumin seeds", "whole cloves", "black peppercorns" — form is whole, not ground;
-    // no reliable whole-form density on hand, so leave it in volume rather than guess.
-    return null;
-  }
 
   const hit = DENSITY_TABLE.find(d => n.includes(d.match));
   return hit ? hit.gPerCup : null;
